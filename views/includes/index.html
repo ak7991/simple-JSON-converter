@@ -47,9 +47,7 @@
         <form action="/dashboard" method="POST">
           <ul>
             <li><span class="usernameInput"><input type="file" placeholder="Choose a file" id="excel-file"></span></li>
-            <li><span class="JSONOutput">
-                    <textarea id="text-val" rows="4">This is the content of my file</textarea><br/>
-                    <textarea placeholder="JSON" id="content-target"></textarea></span></li>
+            <li><span class="JSONOutput"><textarea placeholder="JSON" id="content-target"></textarea></span></li>
           </ul>
 <input type="button" id="dwn-btn" value="Download dinamically generated text file"/>
         </form>    
@@ -131,7 +129,7 @@
       function JSONparse2(str){
         const entries = str.split('\n'); //Split by rows
 
-        let returnJSON = "{"; //Start array (of objects)
+        let returnJSON = "{\n"; //Start array (of objects)
 
         const entriesNum = entries.length; //Number of entries
 

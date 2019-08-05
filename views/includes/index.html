@@ -1,0 +1,378 @@
+<!--
+
+/*
+ *
+ * Copyright 2015 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+-->
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Google+ JavaScript Quickstart</title>
+  <!-- JavaScript specific to this application that is not related to API
+     calls -->
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js" ></script>
+  <meta name="google-signin-client_id" content="659988389140-anthgmiamjtt7sk1gg6mm6cann9k7ugo.apps.googleusercontent.com"></meta>
+</head>
+<body>
+  <div id="gConnect">
+    <div id="signin-button"></div>
+  </div>
+  <div id="authOps" style="display:none">
+   
+    <button id="signOut" onclick="auth2.signOut()">Sign Out</button>
+    
+    <button id="disconnect" >Disconnect your Google account from this app</button>
+
+    <div id="JSONconversion">
+
+      <img src="https://placeimg.com/400/400/people" alt="Avatar" id="avatar">
+
+      <p><span id="usernameDisplay"></span></p>
+
+        <form action="/dashboard" method="POST">
+          <ul>
+            <li><span class="usernameInput"><input type="file" placeholder="Choose a file" id="excel-file"></span></li>
+            <li><span class="JSONOutput">
+                    <textarea id="text-val" rows="4">This is the content of my file</textarea><br/>
+                    <textarea placeholder="JSON" id="content-target"></textarea></span></li>
+          </ul>
+<input type="button" id="dwn-btn" value="Download dinamically generated text file"/>
+        </form>    
+    <script>
+      //Selecting the input field that accepts a file
+      const in2 = document.getElementById('excel-file');
+      //Intialize an event handler on change
+      in2.addEventListener('change', getFile);
+      var fileExtension = "";
+
+      //Getting the file
+      function getFile(event) {
+
+          const input = event.target; //The 'drop-box'
+
+        if ('files' in input) {
+
+          fileExtension = in2.value.split('.')[in2.value.split('.').length - 1];
+
+          if( fileExtension === 'csv' || fileExtension === 'txt' || fileExtension === 'xlsx'){
+            //Sending the file to a fucntion that places it on the HTML page if valid and non-empty
+            if(input.files.length > 0){
+              placeFileContent(document.getElementById('content-target'), input.files[0], true);
+            }
+            //Empty File
+            else{
+              placeFileContent(document.getElementById('content-target'), 'Empty File', false);
+            }
+          }
+          //Non-supported format
+          else{
+            placeFileContent(document.getElementById('content-target'), 'Invalid format', false);
+          }
+        }
+      }
+
+      //Placing the content of the input file to a desired target on the HTML page
+      function placeFileContent(target, file, conversionPossible) {
+
+      if(fileExtension == 'xlsx'){
+        console.log('getting converted...');
+        file = handleExcelSelect(file);
+        console.log(file);
+        console.log('converted');
+      }
+
+        if(conversionPossible){
+          console.log(fileExtension)
+          //Sending the file to a function that will return the text inside the file
+          readFileContent(file)
+          .then(content => {
+            if(fileExtension === 'xlsx'){
+              console.log('xls');
+              content = handleExcelSelect(file);
+            }
+            target.value = JSONparse2(content);
+            target.style.border = "3px solid lightgreen";
+          })
+          .catch(error => console.log(error));
+        }
+        //Print invalid file format
+        else{
+          //Print error sent
+          target.style.border = "3px solid firebrick";
+          target.value = `<${file}>`;
+        
+      }
+      }
+
+
+      /*
+      JSON object type#2: Single object with array values
+      {
+      key: [value, value, value],
+      key: [value, value, value],
+      key: [value, value, value]}
+      }
+      */
+      function JSONparse2(str){
+        const entries = str.split('\n'); //Split by rows
+
+        let returnJSON = "{"; //Start array (of objects)
+
+        const entriesNum = entries.length; //Number of entries
+
+        //Populate JSON by iterating values
+        for(let i = 0; i < entriesNum; i++){
+          let entry = entries[i];
+          let prop = entry.split(',')[0]; //First value as property
+          let vals = entry.split(',').slice(1);
+
+          let temp = `"${prop.trim()}": [`;
+          vals.forEach( elem => {temp += `"${elem.trim()}", `});
+          temp = temp.slice(0, temp.length-2); //Truncate last comma
+          temp += "],\n";
+
+          returnJSON += temp; //add to JSON
+        }
+          returnJSON = returnJSON.slice(0, returnJSON.length-2); //Truncate last comma
+
+        returnJSON += "\n}"; //Start object
+        return returnJSON
+      }
+
+
+
+      var ExcelToCSV = function() {
+
+        //Defining a method to parse the excel file
+          this.parseExcel = function(file) {
+            var reader = new FileReader();
+
+            console.log(file);
+            reader.onload = function(e) {
+
+              var data = e.target.result;
+              var workbook = XLSX.read(data, {
+                type: 'binary'
+              });
+                  console.log(data);
+              workbook.SheetNames.forEach(function(sheetName) {
+                //CSV conversion
+                var XL_CSV_converted = XLSX.utils.sheet_to_csv(workbook.Sheets[sheetName]);
+                console.log(XL_CSV_converted);
+              })
+            };
+
+            reader.onerror = function(error) {
+              console.log(error);
+            };
+
+            // reader.readAsBinaryString(file);
+          };
+        };
+
+        function handleExcelSelect(file) {
+          var xl2csv = new ExcelToCSV();
+          return xl2csv.parseExcel(file);
+        }
+
+
+      function readFileContent(file) {
+          const reader = new FileReader()
+        return new Promise((resolve, reject) => {
+          reader.onload = event => resolve(event.target.result)
+          reader.onerror = error => reject(error)
+          reader.readAsText(file)
+        })
+      }
+</script>
+<script>
+        function download(filename, text) {
+            var element = document.createElement('a');
+            element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+            element.setAttribute('download', filename);
+
+            element.style.display = 'none';
+            document.body.appendChild(element);
+
+            element.click();
+
+            document.body.removeChild(element);
+        }
+
+        // Start file download.
+        document.getElementById("dwn-btn").addEventListener("click", function(){
+            // Generate download of hello.txt file with some content
+            var text = document.getElementById("content-target").value;
+            var filename = "abc.json";
+            
+            download(filename, text);
+        }, false);
+</script>
+  </div>
+<script type="text/javascript">
+var auth2 = {};
+var helper = (function() {
+  return {
+    /**
+     * Hides the sign in button and starts the post-authorization operations.
+     *
+     * @param {Object} authResult An Object which contains the access token and
+     *   other authentication information.
+     */
+    onSignInCallback: function(authResult) {
+      $('#authResult').html('Auth Result:<br/>');
+      for (var field in authResult) {
+        $('#authResult').append(' ' + field + ': ' +
+            authResult[field] + '<br/>');
+      }
+      if (authResult.isSignedIn.get()) {
+        $('#authOps').show('slow');
+        $('#gConnect').hide();
+        helper.profile();
+        helper.people();
+      } else {
+          if (authResult['error'] || authResult.currentUser.get().getAuthResponse() == null) {
+            // There was an error, which means the user is not signed in.
+            // As an example, you can handle by writing to the console:
+            console.log('There was an error: ' + authResult['error']);
+          }
+          $('#authResult').append('Logged out');
+          $('#authOps').hide('slow');
+          $('#gConnect').show();
+      }
+
+      console.log('authResult', authResult);
+    },
+
+    /**
+     * Calls the OAuth2 endpoint to disconnect the app for the user.
+     */
+    disconnect: function() {
+      // Revoke the access token.
+      auth2.disconnect();
+    },
+
+    /**
+     * Gets and renders the list of people visible to this app.
+     */
+    people: function() {
+      gapi.client.plus.people.list({
+        'userId': 'me',
+        'collection': 'visible'
+      }).then(function(res) {
+        var people = res.result;
+        $('#visiblePeople').empty();
+        $('#visiblePeople').append('Number of people visible to this app: ' +
+            people.totalItems + '<br/>');
+        for (var personIndex in people.items) {
+          person = people.items[personIndex];
+          $('#visiblePeople').append('<img src="' + person.image.url + '">');
+        }
+      });
+    },
+
+    /**
+     * Gets and renders the currently signed in user's profile data.
+     */
+    profile: function(){
+      gapi.client.plus.people.get({
+        'userId': 'me'
+      }).then(function(res) {
+        var profile = res.result;
+        console.log(profile);
+        $('#profile').empty();
+        $('#profile').append(
+            $('<p><img src=\"' + profile.image.url + '\"></p>'));
+        $('#profile').append(
+            $('<p>Hello ' + profile.displayName + '!<br />Tagline: ' +
+            profile.tagline + '<br />About: ' + profile.aboutMe + '</p>'));
+        if (profile.emails) {
+          $('#profile').append('<br/>Emails: ');
+          for (var i=0; i < profile.emails.length; i++){
+            $('#profile').append(profile.emails[i].value).append(' ');
+          }
+          $('#profile').append('<br/>');
+        }
+        if (profile.cover && profile.coverPhoto) {
+          $('#profile').append(
+              $('<p><img src=\"' + profile.cover.coverPhoto.url + '\"></p>'));
+        }
+      }, function(err) {
+        var error = err.result;
+        $('#profile').empty();
+        $('#profile').append(error.message);
+      });
+    }
+  };
+})();
+
+/**
+ * jQuery initialization
+ */
+$(document).ready(function() {
+  $('#disconnect').click(helper.disconnect);
+  $('#loaderror').hide();
+  if ($('meta')[0].content == 'YOUR_CLIENT_ID') {
+    alert('This sample requires your OAuth credentials (client ID) ' +
+        'from the Google APIs console:\n' +
+        '    https://code.google.com/apis/console/#:access\n\n' +
+        'Find and replace YOUR_CLIENT_ID with your client ID.'
+    );
+  }
+});
+
+/**
+ * Handler for when the sign-in state changes.
+ *
+ * @param {boolean} isSignedIn The new signed in state.
+ */
+var updateSignIn = function() {
+  console.log('update sign in state');
+  if (auth2.isSignedIn.get()) {
+    console.log('signed in');
+    helper.onSignInCallback(gapi.auth2.getAuthInstance());
+  }else{
+    console.log('signed out');
+    helper.onSignInCallback(gapi.auth2.getAuthInstance());
+  }
+}
+
+/**
+ * This method sets up the sign-in listener after the client library loads.
+ */
+function startApp() {
+  gapi.load('auth2', function() {
+    gapi.client.load('plus','v1').then(function() {
+      gapi.signin2.render('signin-button', {
+          scope: 'https://www.googleapis.com/auth/plus.login',
+          fetch_basic_profile: false });
+      gapi.auth2.init({fetch_basic_profile: false,
+          scope:'https://www.googleapis.com/auth/plus.login'}).then(
+            function (){
+              console.log('init');
+              auth2 = gapi.auth2.getAuthInstance();
+              auth2.isSignedIn.listen(updateSignIn);
+              auth2.then(updateSignIn);
+            });
+    });
+  });
+}
+</script>
+<script src="https://apis.google.com/js/client:platform.js?onload=startApp"></script>
+</body>
+</html>
